@@ -1,22 +1,87 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
+import { ConflictException, Injectable, Logger,
+  OnModuleInit, } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { UserRepository } from './user.repository.abstract';
 import { User } from './user.model';
 import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
-export class UsersService {
+export class UsersService implements OnModuleInit {
+  private readonly logger = new Logger(UsersService.name);
+
   // Inyectamos UserRepository. readonly es una buena práctica.
   constructor(private readonly usersRepository: UserRepository) {}
+
+  async onModuleInit() {
+    this.logger.log(
+      'Verificando la existencia del usuario administrador por defecto...',
+    );
+
+    // Leemos las variables de entorno
+    const adminUsername = process.env.DEFAULT_ADMIN_USER;
+    const adminEmail = process.env.DEFAULT_ADMIN_EMAIL;
+    const adminPass = process.env.DEFAULT_ADMIN_PASS;
+    const adminFullName = process.env.DEFAULT_ADMIN_FULLNAME;
+
+    // Validamos que las variables existan
+    if (!adminUsername || !adminEmail || !adminPass || !adminFullName) {
+      this.logger.warn(
+        'Faltan variables de entorno para el admin por defecto. Saltando creación.',
+      );
+      this.logger.warn(
+        'Asegúrate de tener DEFAULT_ADMIN_USER, DEFAULT_ADMIN_PASS, etc., en tu .env',
+      );
+      return;
+    }
+
+    // Verificamos si el admin ya existe
+    const existingAdmin =
+      (await this.usersRepository.findOneByUsername(adminUsername)) ||
+      (await this.usersRepository.findOneByEmail(adminEmail));
+
+    if (existingAdmin) {
+      this.logger.log(
+        'El usuario administrador por defecto ya existe. Saltando creación.',
+      );
+      return;
+    }
+
+    // Si no existe, lo creamos
+    this.logger.log('Usuario administrador no encontrado. Creando...');
+    try {
+      const adminDto: CreateUserDto = {
+        username: adminUsername,
+        password: adminPass,
+        email: adminEmail,
+        fullName: adminFullName,
+      };
+
+      // Llamamos a nuestro método 'create' modificado con los roles de admin
+      await this.create(adminDto, ['admin', 'user']);
+
+      this.logger.log(
+        'Usuario administrador por defecto creado exitosamente.',
+      );
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        this.logger.warn(
+          'Carrera de condiciones detectada: El admin ya existe.',
+        );
+      } else {
+        this.logger.error(
+          'Error fatal al crear el usuario administrador por defecto.',
+          error.stack,
+        );
+      }
+    }
+  }
 
   /**
    * Devuelve todos los usuarios sin su contraseña.
    */
   async findAll(): Promise<Omit<User, 'password'>[]> {
     const users = await this.usersRepository.findAll();
-    // Nos aseguramos de quitar la contraseña de cada usuario
-    return users.map(user => {
+    return users.map((user) => {
       const { password, ...result } = user;
       return result;
     });
@@ -24,11 +89,13 @@ export class UsersService {
 
   /**
    * Crea un nuevo usuario, manejando validaciones y hasheo de contraseña.
-   * @param createUserDto - DTO con los datos para crear el usuario.
-   * @returns El usuario creado sin la contraseña.
+   * Ahora acepta un array de roles opcional.
    */
-  async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
-    // 1. Validar que el usuario o email no existan
+  async create(
+    createUserDto: CreateUserDto,
+    roles: string[] = ['user'], // <-- Parámetro de roles (default 'user')
+  ): Promise<Omit<User, 'password'>> {
+    // 1. Validaciones
     const existingUserByUsername = await this.usersRepository.findOneByUsername(
       createUserDto.username,
     );
@@ -50,10 +117,10 @@ export class UsersService {
     // 3. Construir el objeto de nuevo usuario
     const newUser: User = {
       ...createUserDto,
-      userId: uuidv4(),
+      userId: null, // <-- Dejamos que la BD genere el ID (soluciona el error de TS)
       password: hashedPassword,
       isActive: true,
-      roles: ['user'], // Rol por defecto
+      roles: roles, // <-- Usamos el parámetro de roles
     };
 
     // 4. Persistir el usuario usando el repositorio y devolver el resultado

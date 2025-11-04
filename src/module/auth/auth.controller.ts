@@ -4,16 +4,12 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Roles, RolesGuard } from './guards/roles.guard';
 import { User } from '../users/user.model';
-import { CreateUserDto } from '../users/dto/create-user.dto';
 
 @Controller('auth') // Todas las rutas aquí empezarán con /auth
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  /**
-   * Endpoint de Login
-   * POST /auth/login
-   */
+
   @UseGuards(LocalAuthGuard) // 1. Activa LocalStrategy (valida user/pass)
   @Post('login')
   async login(@Request() req) {
@@ -22,10 +18,8 @@ export class AuthController {
     return this.authService.login(req.user as Omit<User, 'password'>);
   }
 
-  /**
-   * Endpoint de Perfil (Ruta Protegida)
-   * GET /auth/profile
-   */
+  
+  // Endpoint de Perfil (Ruta Protegida)
   @UseGuards(JwtAuthGuard) // 1. Activa JwtStrategy (valida el token JWT)
   @Get('profile')
   getProfile(@Request() req) {

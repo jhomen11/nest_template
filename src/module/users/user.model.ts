@@ -3,17 +3,10 @@
  * El objeto 'User' que usa la lógica de negocio (AuthService, etc.)
  */
 export class User {
-  userId: string;
+  userId: string | null; // Permitimos null para nuevos usuarios antes de guardarlos
   username: string;
   email: string;
-  
-  /**
-   * MODIFICADO:
-   * Renombramos 'passwordHash' a 'password' para reflejar
-   * que estamos probando con contraseñas en texto plano.
-   */
   password: string; 
-
   fullName: string;
   isActive: boolean;
   roles: string[];
