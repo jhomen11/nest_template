@@ -23,7 +23,8 @@ export abstract class UserRepository {
    */
   abstract findOneByEmail(email: string): Promise<User | undefined>;
 
-  // (A medida que tu app crezca, agregarías más métodos aquí)
-  // abstract create(user: User): Promise<User>;
-  // abstract update(userId: string, updates: Partial<User>): Promise<User>;
+  abstract create(user: User): Promise<Omit<User, 'password'>>;
+
+  abstract findAll(): Promise<User[]>;
+
 }

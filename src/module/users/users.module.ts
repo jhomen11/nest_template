@@ -1,6 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { UserRepository } from './user.repository.abstract';
 import { InMemoryUserRepository } from './in-memory-user.repository';
+import { UsersService } from './users.service';
+import { UsersController } from './users.controller';
 // No importamos TypeOrmUserRepository ni TypeOrmModule por ahora.
 
 /**
@@ -16,17 +18,19 @@ const repositoryProvider = {
 
 @Module({
   imports: [
+    // Ya no es necesaria la importación de AuthModule aquí
     // No necesitamos TypeOrmModule.forFeature(...) aquí
     // porque estamos probando en memoria.
   ],
+  controllers: [UsersController],
   providers: [
     repositoryProvider, // Registra nuestro "interruptor"
-    // También registramos la clase concreta para que Nest la pueda instanciar
-    InMemoryUserRepository, 
+    UsersService,
   ],
   exports: [
     // Exportamos el "contrato" para que otros módulos (como AuthModule) lo usen
-    UserRepository, 
+    UserRepository,
+    UsersService,
   ],
 })
 export class UsersModule {}

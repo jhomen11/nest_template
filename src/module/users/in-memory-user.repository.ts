@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { UserRepository } from './user.repository.abstract';
 import { User } from './user.model';
+import * as bcrypt from 'bcryptjs';
 
 /**
  * Esta es la implementación "En Memoria" de nuestro contrato UserRepository.
@@ -9,6 +10,12 @@ import { User } from './user.model';
  */
 @Injectable()
 export class InMemoryUserRepository extends UserRepository {
+
+  async create(user: User): Promise<Omit<User, 'password'>> {
+    this.users.push(user);
+    const { password, ...result } = user;
+    return Promise.resolve(result);
+  }
   
   // Nuestra base de datos "falsa" en memoria.
   private readonly users: User[] = [
@@ -16,8 +23,8 @@ export class InMemoryUserRepository extends UserRepository {
       userId: '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed',
       username: 'admin',
       email: 'admin@example.com',
-      // Hasheado de "admin123"
-      passwordHash: '$2b$10$Pcmh4G1NMUb2l.4QhXU3A.oTfL/f/3.aR6Iwn.a9L.s2O9I/5/wY.', 
+      // Contraseña: admin123
+      password: bcrypt.hashSync('admin123', 10), 
       fullName: 'Administrador del Sistema',
       isActive: true,
       roles: ['admin', 'user'],
@@ -26,8 +33,8 @@ export class InMemoryUserRepository extends UserRepository {
       userId: '2c8e7abc-c8fd-4b2d-9b5d-ab8dfbbd4cee',
       username: 'user',
       email: 'user@example.com',
-      // Hasheado de "user123"
-      passwordHash: '$2b$10$U2JVdC.AWMDEgL8.A1L9Q.s5S6m73yV.L/yA/u.R.b.S.A2/S.OaS',
+      // Contraseña: user123
+      password: bcrypt.hashSync('user123', 10),
       fullName: 'Usuario Regular',
       isActive: true,
       roles: ['user'],
@@ -51,5 +58,13 @@ export class InMemoryUserRepository extends UserRepository {
   async findOneByEmail(email: string): Promise<User | undefined> {
     const user = this.users.find((user) => user.email === email);
     return Promise.resolve(user);
+  }
+
+  /**
+   * Implementación del método 'findAll' del contrato.
+   * Devuelve todos los usuarios del array en memoria.
+   */
+  async findAll(): Promise<User[]> {
+    return Promise.resolve(this.users);
   }
 }

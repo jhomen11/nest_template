@@ -1,55 +1,41 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UserRepository } from '../users/user.repository.abstract';
 import * as bcrypt from 'bcryptjs'; // Usamos bcryptjs como decidimos
 import { User } from '../users/user.model';
+import { CreateUserDto } from '../users/dto/create-user.dto';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class AuthService {
   /**
    * Inyectamos el "CONTRATO" (UserRepository), no una implementación concreta.
-   * NestJS (gracias al Paso 5) nos pasará aquí el InMemoryUserRepository.
+   * NestJS (gracias al UsersModule) nos pasará aquí el UsersService.
    */
   constructor(
-    private usersRepository: UserRepository,
+    private usersService: UsersService,
     private jwtService: JwtService,
   ) {}
 
   /**
-   * Valida a un usuario contra el repositorio.
+   * Valida a un usuario delegando la lógica al UsersService.
    * Esta es la lógica que usará nuestra LocalStrategy (para el login).
    */
-  async validateUser(username: string, pass: string): Promise<any> {
-    // 1. Busca al usuario usando el repositorio
-    const user = await this.usersRepository.findOneByUsername(username);
-
-    if (!user) {
-      console.log(`AuthService: Usuario no encontrado '${username}'`);
-      return null;
-    }
-
-    // 2. Compara la contraseña (usando el passwordHash del modelo)
-    const passwordMatches = await bcrypt.compare(pass, user.passwordHash);
-
-    if (user && passwordMatches) {
-      // 3. Si todo está bien, devuelve el usuario (sin el hash)
-      const { passwordHash, ...result } = user;
-      return result;
-    }
-
-    console.log(`AuthService: Contraseña incorrecta para '${username}'`);
-    return null;
+  async validateUser(
+    username: string,
+    pass: string,
+  ): Promise<Omit<User, 'password'> | null> {
+    const user = await this.usersService.validateUser(username, pass);
+    if (!user) return null;
+    return user;
   }
 
   /**
    * Genera un token JWT para un usuario validado.
    */
-  async login(user: Omit<User, 'passwordHash'>) {
-    // El 'user' que recibimos aquí ya fue validado y no tiene el hash
-
+  async login(user: Omit<User, 'password'>) {
     const payload = {
       username: user.username,
-      sub: user.userId, // 'sub' (subject) es el estándar de JWT para el ID
+      sub: user.userId, 
       roles: user.roles,
       fullName: user.fullName,
       email: user.email,
@@ -58,5 +44,13 @@ export class AuthService {
     return {
       access_token: this.jwtService.sign(payload),
     };
+  }
+
+  /**
+   * Registra un nuevo usuario delegando la lógica al UsersService.
+   * @param createUserDto - DTO con los datos para crear el usuario.
+   */
+  async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
+    return this.usersService.create(createUserDto);
   }
 }

@@ -13,12 +13,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  // El payload es el que definimos en auth.service.ts (login)
-  async validate(payload: any) {
-    return {
-      userId: payload.sub,
-      username: payload.username,
+async validate(payload: any) {
+    return { 
+      userId: payload.sub, 
+      username: payload.username, 
       roles: payload.roles,
+      email: payload.email,
+      fullName: payload.fullName,
     };
   }
 }
