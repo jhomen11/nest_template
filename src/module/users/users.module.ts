@@ -1,34 +1,34 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { UserRepository } from './user.repository.abstract';
-import { InMemoryUserRepository } from './in-memory-user.repository';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { TypeOrmUserRepository } from './typeorm-user.repository';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserEntity } from './entities/user.entity';
-// No importamos TypeOrmUserRepository ni TypeOrmModule por ahora.
+import { UserEntity } from './entities/user.entity'; 
+import { DatabaseModule } from '../database/database.module';
+import { DataSource } from 'typeorm';
 
 /**
  * Este proveedor le dice a NestJS:
  * "Cuando cualquier servicio pida 'UserRepository' (el contrato)...
- * ... entrégale una instancia de 'InMemoryUserRepository' (la implementación)."
+ * ... entrégale una instancia de 'TypeOrmUserRepository' (la implementación)."
  */
 const repositoryProvider = {
   provide: UserRepository, // El "contrato" (Token de Inyección)
-  // useClass: InMemoryUserRepository, // La "implementación" concreta
-  useClass: TypeOrmUserRepository
+  useFactory: (dataSource: DataSource) => {
+    const baseRepository = dataSource.getRepository(UserEntity);
+    return new TypeOrmUserRepository(baseRepository);
+  },
+  inject: ['DATA_SOURCE'],
 };
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserEntity]),
+    DatabaseModule, // Importa DatabaseModule para tener acceso a 'DATA_SOURCE'
   ],
   controllers: [UsersController],
   providers: [
     repositoryProvider, // Registra nuestro "interruptor"
     UsersService,
-    InMemoryUserRepository, 
-    TypeOrmUserRepository, 
   ],
   exports: [
     UserRepository,

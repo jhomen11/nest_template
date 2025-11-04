@@ -1,9 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcryptjs'; // Usamos bcryptjs como decidimos
 import { User } from '../users/user.model';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { UsersService } from '../users/users.service';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -32,18 +32,17 @@ export class AuthService {
   /**
    * Genera un token JWT para un usuario validado.
    */
-  async login(user: Omit<User, 'password'>) {
-    const payload = {
+  async login(user: Omit<User, 'password'>): Promise<string> {
+    const payload: JwtPayload = {
       username: user.username,
-      sub: user.userId, 
+      sub: user.userId,
       roles: user.roles,
       fullName: user.fullName,
       email: user.email,
     };
 
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+    // CAMBIO AQUÍ: Devuelve solo el string firmado
+    return this.jwtService.sign(payload);
   }
 
   /**

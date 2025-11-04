@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserRepository } from './user.repository.abstract';
 import { User } from './user.model';
@@ -17,7 +16,6 @@ export class TypeOrmUserRepository extends UserRepository {
    * Esta es la única clase que hablará directamente con la tabla "users" en Postgres.
    */
   constructor(
-    @InjectRepository(UserEntity)
     private readonly typeOrmRepository: Repository<UserEntity>,
   ) {
     super();
